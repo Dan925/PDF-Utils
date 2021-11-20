@@ -7,7 +7,7 @@ Python script to manipulate pdf files
 1. Combine all pdf files in a folder into one (ordered by file name).
 2. Move a page in pdf file to a specific page number
 3. Replace a page in a pdf file with pages from another file
-4. Merge a pdf file into another at after a specific page
+4. Merge a pdf file into another after a specific page
 
 # Setup
 
