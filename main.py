@@ -1,4 +1,4 @@
-import os
+import os, sys, signal
 from PyPDF2  import PdfFileMerger,PdfFileWriter, PdfFileReader
 
 
@@ -64,18 +64,16 @@ def merge_pdf_after_page():
         print("this path doesn't lead to an existing directory")
         return
     out_name = str(input("Provide a file name for the output pdf file : "))+".pdf"
-    try:
-        merger = PdfFileMerger()
-        merger.append(base)
-        merger.merge(position,input1)
+    merger = PdfFileMerger()
+    merger.append(base)
+    merger.merge(position,input1)
 
-        out_path = os.path.join(out_path,out_name)
-        output = open(out_path,"wb")
-        merger.write(output)
-        merger.close()
-        print(f'Done, your new pdf file should be at: {out_path}')
-    except:
-        print("Exception error occured")
+    out_path = os.path.join(out_path,out_name)
+    output = open(out_path,"wb")
+    merger.write(output)
+    merger.close()
+    print(f'Done, your new pdf file should be at: {out_path}')
+
 
 def merge_pdf_in_dir():
     path = str(input("Provide a folder path where you want to merge all pdf files: "))
@@ -97,9 +95,13 @@ def merge_pdf_in_dir():
     else:
         print("This path isn't a directory")
 
+def done(sig, frame):
+    print("\nBye")
+    sys.exit(0)
 
 def main():
-    choice = int(input ("Enter 1 for merge all pdf in directory(ordered by filename).\nEnter 2 to move a page in PDF file to position x.\nEnter 3 to replace a page with a new pdf file.\nEnter 4 for merge two pdfs after page x.\n"))
+    signal.signal(signal.SIGINT, done)
+    choice = int(input ("Enter 1 for merge all pdf in directory(ordered by filename).\nEnter 2 to move a page in PDF file to position x.\nEnter 3 to replace a page with a new pdf file.\nEnter 4 for merge two pdfs after page x.\nPress CTRL-C to exit\n "))
     if choice == 1:
         merge_pdf_in_dir()
     elif choice == 2:
