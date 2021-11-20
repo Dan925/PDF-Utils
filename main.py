@@ -114,6 +114,3 @@ def main():
 if __name__=="__main__":
     main()
 
-
-# /Users/dan/Desktop/SEG3503/Devoir-3-Questions.pdf
-# /Users/dan/Desktop/SEG3503/merge-out.pdf
