@@ -59,6 +59,18 @@ def merge_pdf_after_page():
         print("these paths don't lead to existing pdf files")
         return
     position = int(input("Provide a page number in the base PDF file where to insert the new pdf (insert after page # ?): "))
+    range_input=str(input("Provide a range of pages from input file to insert with format: page#,page#\nTo insert all pages press ENTER: "))
+    position-=1
+    r=None
+    if range_input:
+        r=list(map(int,range_input.split(',')))
+        if len(r) != 2:
+            print("Wrong page range format")
+            return
+        else:
+            r[0]-=1
+            r=tuple(r)
+    
     out_path =  str(input("Provide a directory path where to save the output pdf file : "))
     if not os.path.isdir(out_path):
         print("this path doesn't lead to an existing directory")
@@ -66,7 +78,7 @@ def merge_pdf_after_page():
     out_name = str(input("Provide a file name for the output pdf file : "))+".pdf"
     merger = PdfFileMerger()
     merger.append(base)
-    merger.merge(position,input1)
+    merger.merge(position,input1,pages=r)
 
     out_path = os.path.join(out_path,out_name)
     output = open(out_path,"wb")
@@ -101,7 +113,7 @@ def done(sig, frame):
 
 def main():
     signal.signal(signal.SIGINT, done)
-    choice = int(input ("Enter 1 for merge all pdf in directory(ordered by filename).\nEnter 2 to move a page in PDF file to position x.\nEnter 3 to replace a page with a new pdf file.\nEnter 4 for merge two pdfs after page x.\nPress CTRL-C to exit\n "))
+    choice = int(input ("Enter 1 for merge all pdf in directory(ordered by filename).\nEnter 2 to move a page in PDF file to page x.\nEnter 3 to replace a page with a new pdf file.\nEnter 4 for insert pdf into another at page x.\nPress CTRL-C to exit\n "))
     if choice == 1:
         merge_pdf_in_dir()
     elif choice == 2:
