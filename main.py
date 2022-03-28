@@ -1,18 +1,33 @@
-import os, sys, signal
-from PyPDF2  import PdfFileMerger,PdfFileWriter, PdfFileReader
+import os
+
+import click
+from PyPDF2 import PdfFileMerger, PdfFileReader, PdfFileWriter
 
 
+class Range(click.ParamType):
+    name = "range_input"
+    def convert(self, value, param, ctx):
+        try:
+            r=list(map(int,value.split(',')))      
+            r[0]-=1
+            return tuple(r)
+        except :
+            self.fail("Wrong page range format", param, ctx)
 
 
-def replace_page():
-    base = str(input("Provide a path to the PDF file to use as base: "))
-    input1 = str(input("Provide a path to the PDF file to use as input: "))
-    if not (os.path.isfile(base) and os.path.isfile(input1) and os.path.splitext(base)[1] == ".pdf" and os.path.splitext(input1)[1] == ".pdf"):
-        print("these paths don't lead to existing pdf files")
-        return
-    page = int(input("Provide a page number in the base PDF file where to replace by the new pdf (page number ?): "))
-    baseReader = PdfFileReader(base)
-    inputReader = PdfFileReader(input1)
+                
+@click.group()
+def main():
+    pass
+
+@main.command()
+@click.option("--base_pdf_path",prompt="Provide a path to the PDF file to use",type=click.Path(exists=True,dir_okay=False))
+@click.option("--input_pdf_path",prompt="Provide a path to the PDF file to use",type=click.Path(exists=True,dir_okay=False))
+@click.option("--page",prompt="Provide a page number in the base PDF file where to replace by the input pdf",type=int)
+def replace_page(base_pdf_path,input_pdf_path,page):
+    baseReader = PdfFileReader(base_pdf_path)
+    inputReader = PdfFileReader(input_pdf_path)
+    
     if page > baseReader.getNumPages() or page < 1 :
         print("invalid page number")
         return
@@ -23,83 +38,73 @@ def replace_page():
             baseWriter.addPage(baseReader.getPage(i))
         else:
             baseWriter.appendPagesFromReader(inputReader)
-    baseWriter.write(open(base,"wb"))
+    baseWriter.write(open(base_pdf_path,"wb"))
     print("Done, your base pdf file has been modified")
 
-
-def move_pdf_page():
-    base = str(input("Provide a path to the PDF file: "))
-    if not (os.path.isfile(base) and os.path.splitext(base)[1] == ".pdf"):
-        print("this path doesn't lead to an existing pdf file")
-        return
-    page = int(input("Provide a page to move within the file (page number?): "))
-    
-    baseReader = PdfFileReader(base)
-    position = int(input("Provide a page number in the base PDF file where to insert the new pdf (insert after page # ?): "))
-    if (page > baseReader.getNumPages() or page < 1 ) or (position > baseReader.getNumPages() or position < 1 ):
+@main.command()
+@click.option("--base_pdf_path",prompt="Provide a path to the PDF file to use",type=click.Path(exists=True,dir_okay=False))
+@click.option("--page_to_move",prompt="Provide a page to move within the file (page number?)",type=int)
+@click.option("--after_page",prompt="Provide a page number in the base PDF file where to insert the new pdf (insert after page # ?)",type=int)
+def move_pdf_page(base_pdf_path,page_to_move,after_page):
+    baseReader = PdfFileReader(base_pdf_path)
+  
+    if (page_to_move > baseReader.getNumPages() or page_to_move < 1 ) or (after_page > baseReader.getNumPages() or after_page < 1 ):
         print("invalid page number")
         return
-    page-=1
-    position-=1
+    page_to_move-=1
+    after_page-=1
     baseWriter = PdfFileWriter()
     for i in range(baseReader.getNumPages()):
-        if i != page:
+        if i != page_to_move:
             baseWriter.addPage(baseReader.getPage(i))
-    pageObj = baseReader.getPage(page)
-    baseWriter.insertPage(pageObj,position)
-    baseWriter.write(open(base,"wb"))
+    pageObj = baseReader.getPage(page_to_move)
+    baseWriter.insertPage(pageObj,after_page)
+    baseWriter.write(open(base_pdf_path,"wb"))
     print("Done, your base pdf file has been modified")
 
 
-
-def merge_pdf_after_page():
-    base = str(input("Provide a path to the PDF file to use as base: "))
-    input1 = str(input("Provide a path to the PDF file to use as input: "))
-    if not (os.path.isfile(base) and os.path.isfile(input1) and os.path.splitext(base)[1] == ".pdf" and os.path.splitext(input1)[1] == ".pdf"):
-        print("these paths don't lead to existing pdf files")
-        return
-    position = int(input("Provide a page number in the base PDF file where to insert the new pdf (insert after page # ?): "))
-    range_input=str(input("Provide a range of pages from input file to insert with format: page#,page#\nTo insert all pages press ENTER: "))
-    position-=1
-    r=None
-    if range_input:
-        r=list(map(int,range_input.split(',')))
-        if len(r) != 2:
-            print("Wrong page range format")
-            return
-        else:
-            r[0]-=1
-            r=tuple(r)
+@main.command()
+@click.option("--base_pdf_path",prompt="Provide a path to the PDF file to use",type=click.Path(exists=True,dir_okay=False))
+@click.option("--input_pdf_path",prompt="Provide a path to the PDF file to use as input",type=click.Path(exists=True,dir_okay=False))
+@click.option("--after_page",prompt="Provide a page number in the base PDF file where to insert the new pdf (insert after page # ?)",type=int)
+@click.option("--range_input",prompt="Provide a range of pages from input file to insert with format: FromPage#,ToPage# [OPTIONAL]",type=Range(),required=False)
+@click.option("--out_dir_path",prompt="Provide a directory path where to save the output pdf file",type=click.Path(exists=True,dir_okay=True,file_okay=False))
+@click.option("--out_name",prompt="Provide a file name for the output pdf file",type=str)
+def merge_pdf_after_page(base_pdf_path,input_pdf_path,after_page,range_input,out_dir_path,out_name):
+    position=after_page
     
-    out_path =  str(input("Provide a directory path where to save the output pdf file : "))
-    if not os.path.isdir(out_path):
-        print("this path doesn't lead to an existing directory")
-        return
-    out_name = str(input("Provide a file name for the output pdf file : "))+".pdf"
+    if(len(out_name.split('.'))==1): out_name+='.pdf'
     merger = PdfFileMerger()
-    merger.append(base)
-    merger.merge(position,input1,pages=r)
+    merger.append(base_pdf_path)
 
-    out_path = os.path.join(out_path,out_name)
+    ip = PdfFileReader(input_pdf_path)
+
+    if ip.isEncrypted:
+        ip.decrypt('')
+
+    merger.merge(position,ip,pages=range_input)
+
+    out_path = os.path.join(out_dir_path,out_name)
     output = open(out_path,"wb")
     merger.write(output)
     merger.close()
     print(f'Done, your new pdf file should be at: {out_path}')
 
-
-def merge_pdf_in_dir():
-    path = str(input("Provide a folder path where you want to merge all pdf files: "))
-    out_name = str(input("Provide a file name for the output pdf file : "))+".pdf"
-    if os.path.isdir(path):
+@main.command()
+@click.option("--dir_path",prompt="Provide a full folder path where you want to merge all pdf files",type=click.Path(exists=True,dir_okay=True,file_okay=False))
+@click.option("--out_name",prompt="Provide a file name for the output pdf file",type=str)
+def merge_pdf_in_dir(dir_path,out_name):
+    if(len(out_name.split('.'))==1): out_name+='.pdf'
+    if os.path.isdir(dir_path):
         merger = PdfFileMerger()
-        for filename in sorted(filter(lambda x: os.path.isfile(os.path.join(path,x)),os.listdir(path))):
-            f = os.path.join(path,filename)
+        for filename in sorted(filter(lambda x: os.path.isfile(os.path.join(dir_path,x)),os.listdir(dir_path))):
+            f = os.path.join(dir_path,filename)
             if os.path.splitext(f)[1] == ".pdf":
                 print(filename)
                 pdfFile = open(f,"rb")
                 merger.append(pdfFile)
 
-        out_path = os.path.join(path,out_name)
+        out_path = os.path.join(dir_path,out_name)
         output = open(out_path,"wb")
         merger.write(output)
         merger.close()
@@ -107,23 +112,7 @@ def merge_pdf_in_dir():
     else:
         print("This path isn't a directory")
 
-def done(sig, frame):
-    print("\nBye")
-    sys.exit(0)
 
-def main():
-    signal.signal(signal.SIGINT, done)
-    choice = int(input ("Enter 1 for merge all pdf in directory(ordered by filename).\nEnter 2 to move a page in PDF file to page x.\nEnter 3 to replace a page with a new pdf file.\nEnter 4 for insert pdf into another at page x.\nPress CTRL-C to exit\n "))
-    if choice == 1:
-        merge_pdf_in_dir()
-    elif choice == 2:
-        move_pdf_page()
-    elif choice == 3:
-        replace_page()
-    elif choice == 4:
-        merge_pdf_after_page()
-    else:
-        print("Invalid choice")
 
 if __name__=="__main__":
     main()
